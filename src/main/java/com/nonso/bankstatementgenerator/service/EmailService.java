@@ -1,5 +1,8 @@
 package com.nonso.bankstatementgenerator.service;
 
+import java.io.File;
+
 public interface EmailService {
-    void sendMimeMessageWithAttachment(String to, String name);
+    void sendEmailWithAttachment(File attachment, String email);
+
 }

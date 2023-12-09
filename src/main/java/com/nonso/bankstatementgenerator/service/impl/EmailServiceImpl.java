@@ -1,56 +1,50 @@
 package com.nonso.bankstatementgenerator.service.impl;
 
+import com.nonso.bankstatementgenerator.exception.StatementException;
 import com.nonso.bankstatementgenerator.service.EmailService;
-import com.nonso.bankstatementgenerator.service.PdfGenerationService;
 import com.nonso.bankstatementgenerator.utils.EmailUtils;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.FileSystemResource;
+import org.springframework.http.HttpStatus;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 
+import java.io.File;
+
+import static com.nonso.bankstatementgenerator.utils.EmailUtils.EMAIL_SUBJECT;
 import static com.nonso.bankstatementgenerator.utils.EmailUtils.getEmailMessage;
+import static org.springframework.http.HttpStatus.BAD_REQUEST;
 
-
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class EmailServiceImpl implements EmailService {
-    public static final String UTF_8_ENCODING = "UTF-8";
     private final JavaMailSender emailSender;
-
-//    private final PdfGenerationService pdfGenerationService;
-
     @Value("${spring.mail.username}")
-    private final String serverEmail;
-
+    private String serverEmail;
 
     @Override
-    public void sendMimeMessageWithAttachment(String to, String name) {
+    public void sendEmailWithAttachment(File attachment, String email) {
         try {
-            final MimeMessage message = getMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, UTF_8_ENCODING);
-            helper.setPriority(1);
-            helper.setFrom(serverEmail);
-            helper.setTo(to);
-            helper.setSubject(EmailUtils.EMAIL_SUBJECT);
-            helper.setText(getEmailMessage(name));
-//            Add attachments
-//            FileSystemResource file = new FileSystemResource(pdfGenerationService.generatePdf(new ArrayList<>()));
-//            helper.addAttachment("bankstatement.pdf", file);
+            MimeMessage message = emailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true);
+
+            helper.setTo(email);
+            helper.setSubject(EMAIL_SUBJECT);
+            helper.setText(EmailUtils.getEmailMessage());
+            helper.addAttachment("bank-statement.pdf", attachment);
+
             emailSender.send(message);
         } catch (MessagingException e) {
-            e.printStackTrace();
-            throw new RuntimeException(e.getMessage());
+            log.error(String.format("An error occurred while sending email. " +
+                    "Possible reasons: %s", e.getLocalizedMessage()));
+            throw new StatementException("Email service not available, got bad greeting", BAD_REQUEST);
         }
-    }
-
-    private MimeMessage getMimeMessage() {
-        return emailSender.createMimeMessage();
     }
 }
 
